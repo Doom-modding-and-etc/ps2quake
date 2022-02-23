@@ -73,9 +73,9 @@ EE_OBJS =\
 	in_ps2.o \
 	ps2_gs.o \
 	vid_ps2.o \
-    obj/usbd_irx.o \
-	obj/usbhdfsd_irx.o \
-	obj/iomanx_irx.o \
+    usbd_irx.o \
+	usbhdfsd_irx.o \
+	iomanx_irx.o \
 	ps2.o \
 	pad.o 
 EE_BIN = bin/quake.elf
@@ -101,20 +101,24 @@ ifeq ($(_IOPRESET), 1)
 	 EE_CFLAGS += -D_IOPRESET
 endif
 
+BIN2S = $(PS2SDK)/bin/bin2s
+
 all: $(EE_BIN)
-	 ps2_packer/ps2_packer bin/quake.elf bin/packed_quake.elf
+#	 ps2_packer/ps2_packer bin/quake.elf bin/packed_quake.elf
 clean:
 	rm -f $(EE_BIN) $(EE_OBJS)
 
 run:
 	ps2client -h 10.0.0.10 execee host:$(EE_BIN)
 
-obj/usbd_irx.s:
-	bin2s irx/usbd.irx obj/usbd_irx.s usbd_irx
-obj/usbhdfsd_irx.s:
-	bin2s irx/usbhdfsd.irx obj/usbhdfsd_irx.s usbhdfsd_irx
-obj/iomanx_irx.s:
-	bin2s irx/iomanx.irx obj/iomanx_irx.s iomanx_irx	
-	
+iomanx_irx.s: $(PS2SDK)/iop/irx/iomanX.irx
+	$(BIN2S) $< $@ iomanx_irx
+
+usbd_irx.s: $(PS2SDK)/iop/irx/usbd.irx
+	$(BIN2S) $< $@ usbd_irx
+
+usbhdfsd_irx.s: $(PS2SDK)/iop/irx/usbhdfsd.irx
+	$(BIN2S) $< $@ usbhdfsd_irx
+
 include $(PS2SDK)/samples/Makefile.pref
-include Makefile.eeglobal
+include $(PS2SDK)/samples/Makefile.eeglobal

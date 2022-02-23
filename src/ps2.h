@@ -2,6 +2,7 @@
 #define _PS2_H_
 #include <stdio.h> 
 #include <tamtypes.h>
+#define NEWLIB_PORT_AWARE
 #include <sifrpc.h>
 #include <kernel.h>
 #include <loadfile.h>

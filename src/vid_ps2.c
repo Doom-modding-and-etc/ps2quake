@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "ps2_gs.h"
 
-viddef_t	vid;				// global video state
+extern viddef_t	vid;				// global video state
 
 static int verbose=0;
 int ignorenext;

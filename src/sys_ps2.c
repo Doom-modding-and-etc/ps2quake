@@ -29,6 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <kernel.h>
 #include <sifrpc.h>
 #include <loadfile.h>
+#define NEWLIB_PORT_AWARE
 #include <fileio.h>
 #include <signal.h>
 #include <debug.h>

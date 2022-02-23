@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // in_ps2.c -- PS2 input driver.
 
 #include <tamtypes.h>
+#define NEWLIB_PORT_AWARE
 #include <libkbd.h>
 #include <libmouse.h>
 
