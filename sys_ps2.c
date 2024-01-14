@@ -27,11 +27,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <stdio.h> 
 #include <tamtypes.h>
-#define NEWLIB_PORT_AWARE
 #include <sifrpc.h>
 #include <kernel.h>
+#ifdef NEWLIB
+#define NEWLIB_PORT_AWARE
 #include <loadfile.h>
 #include <fileio.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -144,7 +149,9 @@ void IOP_reset() // resets IOP and apply sbv patches.
 	
 	while(!SifIopReset("rom0:UDNL rom0:EELOADCNF",0));
 	while(!SifIopSync());
+#ifdef FILEXIO
 	fioExit();
+#endif
 	SifExitIopHeap();
 	SifLoadFileExit();
 	SifExitRpc();
@@ -155,7 +162,9 @@ void IOP_reset() // resets IOP and apply sbv patches.
   	//twice, some in-hdloader hack
   	while(!SifIopReset("rom0:UDNL rom0:EELOADCNF",0));
   	while(!SifIopSync());
+#ifdef FILEXIO
   	fioExit();
+#endif
   	SifExitIopHeap();
   	SifLoadFileExit();
   	SifExitRpc();
@@ -307,10 +316,13 @@ int filelength (int f)
 {
 	int pos;
 	int end;
-	
+#ifdef FILEXIO
 	end = fioLseek(f,0,SEEK_END);
 	pos = fioLseek(f,0,SEEK_SET);
-
+#else
+	end = lseek(f,0,SEEK_END);
+	pos = lseek(f,0,SEEK_SET);
+#endif
 	return end;
 }
 
@@ -320,8 +332,11 @@ int Sys_FileOpenRead (char *path, int *hndl)
 	int i;
 	
 	i = findhandle ();
-
+#ifdef NEWLIB
 	f = fioOpen(path,O_RDONLY);
+#else
+	f = open(path,O_RDONLY, 0777);
+#endif
 	if (!f)
 	{
 		*hndl = -1;
@@ -342,8 +357,11 @@ int Sys_FileOpenWrite (char *path)
 	int             i;
 	
 	i = findhandle ();
-
+#ifdef NEWLIB
 	f = fioOpen(path,O_WRONLY | O_CREAT);
+#else
+	f = open(path,O_WRONLY | O_CREAT, 0777);
+#endif
 	//FIXME
 	//if(!f)
 	//{
@@ -356,23 +374,39 @@ int Sys_FileOpenWrite (char *path)
 
 void Sys_FileClose (int handle)
 {
+#ifdef NEWLIB
 	fioClose(sys_handles[handle]);
+#else
+	close(sys_handles[handle]);
+#endif
 	sys_handles[handle] = -1;
 }
 
 void Sys_FileSeek (int handle, int position)
 {
+#ifdef NEWLIB
 	fioLseek (sys_handles[handle], position, SEEK_SET);
+#else
+	lseek (sys_handles[handle], position, SEEK_SET);
+#endif
 }
 
 int Sys_FileRead (int handle, void *dest, int count)
 {
+#ifdef NEWLIB
 	return fioRead(sys_handles[handle], dest, count);
+#else
+	return read(sys_handles[handle], dest, count);	
+#endif
 }
 
 int Sys_FileWrite (int handle, void *data, int count)
 {
+#ifdef NEWLIB
 	return fioWrite(sys_handles[handle], data, count);
+#else
+	return write(sys_handles[handle], data, count);
+#endif
 }
 
 int     Sys_FileTime (char *path)
@@ -391,7 +425,11 @@ int     Sys_FileTime (char *path)
 
 void Sys_mkdir (char *path)
 {
+#ifdef NEWLIB
 	fioMkdir(path);
+#else
+	mkdir(path, 0777);
+#endif
 }
 
 
