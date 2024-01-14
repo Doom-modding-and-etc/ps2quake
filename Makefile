@@ -76,7 +76,6 @@ EE_OBJS =\
     usbd_irx.o \
 	usbhdfsd_irx.o \
 	iomanx_irx.o \
-	ps2.o \
 	pad.o 
 	
 EE_BIN = bin/quake.elf

@@ -19,6 +19,7 @@
         "kernel.h": "c",
         "string.h": "c",
         "ps2.h": "c",
-        "pad.h": "c"
+        "pad.h": "c",
+        "ps2_gs.h": "c"
     }
 }

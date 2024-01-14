@@ -27,7 +27,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include "in_ps2.h"
 #include "pad.h"
-#include "ps2.h"
 PS2KbdRawKey key;
 PS2MouseData mouse;
 u32 ButtonDown;

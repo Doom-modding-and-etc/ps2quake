@@ -25,20 +25,24 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 	See http://www.ps2dev.org for all your ps2 coding need.
 */
 
+#include <stdio.h> 
 #include <tamtypes.h>
-#include <kernel.h>
-#include <sifrpc.h>
-#include <loadfile.h>
 #define NEWLIB_PORT_AWARE
+#include <sifrpc.h>
+#include <kernel.h>
+#include <loadfile.h>
 #include <fileio.h>
-#include <signal.h>
+#include <string.h>
+#include <errno.h>
+#include <stdlib.h>
 #include <debug.h>
+#include <iopcontrol.h>
+#include <sbv_patches.h>
+#include <iopheap.h>
 
-#include "quakedef.h"
-#include "errno.h"
-#include "ps2.h"
 #include "ps2_gs.h"
 #include "pad.h"
+#include "quakedef.h"
 
 #ifdef _SOUND
 #include "SDL.h"
@@ -46,6 +50,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 cvar_t  sys_linerefresh = {"sys_linerefresh","0"};// set for entity display
 
 qboolean			isDedicated;
+
+extern u32 usbd_irx;
+extern u32 size_usbd_irx;
+
+extern u32 usbhdfsd_irx;
+extern u32 size_usbhdfsd_irx;
+
+extern u32 iomanx_irx;
+extern u32 size_iomanx_irx;
+
+
+void IOP_reset();
+void loadmodules();
+
 
 //////////////////////////////////////////////////////////////////////////////////////
 // SYSCALLS NECESSARY
@@ -120,6 +138,36 @@ int handlerItim(int ca)
 
 int id_TIM; // id handler
 
+void IOP_reset() // resets IOP and apply sbv patches.	
+{	
+	SifInitRpc(0);
+	
+	while(!SifIopReset("rom0:UDNL rom0:EELOADCNF",0));
+	while(!SifIopSync());
+	fioExit();
+	SifExitIopHeap();
+	SifLoadFileExit();
+	SifExitRpc();
+	SifExitCmd();
+	SifInitRpc(0);
+  	FlushCache(0);
+  	FlushCache(2);
+  	//twice, some in-hdloader hack
+  	while(!SifIopReset("rom0:UDNL rom0:EELOADCNF",0));
+  	while(!SifIopSync());
+  	fioExit();
+  	SifExitIopHeap();
+  	SifLoadFileExit();
+  	SifExitRpc();
+  	SifExitCmd();
+
+  	SifInitRpc(0);
+  	FlushCache(0);
+  	FlushCache(2);
+
+  	SifLoadFileInit();
+}	
+
 void start_ps2_timer()
 {
 	T0_MODE=0; // disable timer
@@ -141,29 +189,65 @@ void stop_ps2_timer()
 }
 //////////////////////////////////////////////////////////////////////////
 
-void LoadModules(void) //not used
+void loadmodules()
 {
-    int ret;
-
-	ret = SifLoadModule("rom0:SIO2MAN", 0, NULL);
-	if (ret < 0) {
-		printf("Failed to load module: SIO2MAN");
-		SleepThread();
+   int ret, id;
+     
+    if ((id = SifExecModuleBuffer(&iomanx_irx, size_iomanx_irx, 0, NULL, &ret)) < 0) {
+		printf("Error loading iomanx\n");
 	}
+   ret = SifLoadModule("rom0:SIO2MAN", 0, NULL);
+   if(ret < 0){
+          printf("Error loading rom0:XSIO2MAN\n");
+              }
+   /*ret = SifLoadModule("rom0:MCMAN", 0, NULL);
+   if(ret < 0){
+          printf("Error loading rom0:MCMAN\n");
+              }
+   ret = SifLoadModule("rom0:MCSERV", 0, NULL);
+   if(ret < 0){
+          printf("Error loading rom0:MCSERV\n");
+          }*/
+  //#ifdef _IOPRESET
 
-	ret = SifLoadModule("rom0:MCMAN", 0, NULL);
-	if (ret < 0) {
-		printf("Failed to load module: MCMAN");
-		SleepThread();
+ // #endif            
+   ret = SifLoadModule("rom0:PADMAN", 0, NULL);
+   if(ret < 0){
+          printf("Error loading rom0:XPADMAN\n");
+              }
+  
+  //ret = SifLoadModule("rom0:IOMAN", 0, NULL);
+  // if(ret < 0){
+     //     printf("Error loading rom0:IOMAN\n");
+      //        }
+      
+    if ((id = SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret)) < 0) {
+		printf("Error loading usbd\n");
 	}
-
-	ret = SifLoadModule("rom0:MCSERV", 0, NULL);
-	if (ret < 0) {
-		printf("Failed to load module: MCSERV");
-		SleepThread();
+    if ((id = SifExecModuleBuffer(&usbhdfsd_irx, size_usbhdfsd_irx, 0, NULL, &ret)) < 0) {
+		printf("Error loading usbhdfsd\n");
 	}
-   	
-
+	 
+    /*if ((id = SifExecModuleBuffer(&ps2kbd_irx, size_ps2kbd_irx, 0, NULL, &ret)) < 0) {
+		scr_printf("Error loading ps2kbd\n");
+	}
+	 if ((id = SifExecModuleBuffer(&ps2mouse_irx, size_ps2mouse_irx, 0, NULL, &ret)) < 0) {
+		scr_printf("Error loading ps2mouse\n");
+	}
+	if ((id = SifExecModuleBuffer(&ps2snd_irx, size_ps2snd_irx, 0, NULL, &ret)) < 0) {
+		scr_printf("Error loading ps2snd\n");
+	}*/
+/*	ret = SifLoadModule("mass:irx/fileXio.irx", 0, NULL);
+	if (ret < 0) {
+		printf("Failed to load module: fileXio.irx");
+		//SleepThread();
+	}
+	ret = SifLoadModule("mass:irx/ioptrap.irx", 0, NULL);
+	if (ret < 0) {
+		printf("Failed to load module: ioptrap.irx");
+		//SleepThread();
+	}*/
+	
 	ret = SifLoadModule("mass:irx/ps2kbd.irx", 0, NULL);
 	if (ret < 0) {
 		printf("Failed to load module: PS2KBD");
