@@ -1,4 +1,5 @@
 
+_SOUND=0
 _PAL=1
 _NTSC=0
 _VESA=0
@@ -69,7 +70,6 @@ EE_OBJS =\
 	net_loop.o \
 	net_none.o \
 	sys_ps2.o \
-	snd_null.o \
 	in_ps2.o \
 	ps2_gs.o \
 	vid_ps2.o \
@@ -78,13 +78,25 @@ EE_OBJS =\
 	iomanx_irx.o \
 	ps2.o \
 	pad.o 
+	
 EE_BIN = bin/quake.elf
 
-EE_LIBS =   -lmouse -lkbd -lm -lc -lkernel -lpad
+EE_LIBS =   -lmouse -lkbd -lm -lc -lpad -lkernel
 EE_INCS :=  -I$(PS2SDK)/sbv/include -I$(PS2SDK)/ports/include/SDL -I$(PS2SDK)/ee/include -I$(PS2DEV)/ee/ee/include
 EE_CFLAGS = -g -Dstricmp=strcasecmp -funroll-loops -fomit-frame-pointer -fexpensive-optimizations
 EE_LDFLAGS := -L$(PS2SDK)/sbv/lib -L$(PS2SDK)/ports/lib
 
+ifeq ($(_SOUND), 1)
+	 EE_CFLAGS += -D_SOUND -DSDL
+	 EE_LIBS += -lsdl -lsdlmain
+	 EE_OBJS += snd_sdl.o \
+                snd_mix.o \
+	            snd_dma.o \
+	            snd_mem.o 
+endif
+ifeq ($(_SOUND), 0)
+	 EE_OBJS += snd_null.o
+endif
 ifeq ($(_PAL), 1)
 	 EE_CFLAGS += -D_PAL
 endif
@@ -106,7 +118,7 @@ BIN2S = $(PS2SDK)/bin/bin2s
 all: $(EE_BIN)
 #	 ps2_packer/ps2_packer bin/quake.elf bin/packed_quake.elf
 clean:
-	rm -f $(EE_BIN) $(EE_OBJS)
+	rm -f $(EE_BIN) $(EE_OBJS) $(EE_OBJS +)
 
 run:
 	ps2client -h 10.0.0.10 execee host:$(EE_BIN)
@@ -118,7 +130,7 @@ usbd_irx.s: $(PS2SDK)/iop/irx/usbd.irx
 	$(BIN2S) $< $@ usbd_irx
 
 usbhdfsd_irx.s: $(PS2SDK)/iop/irx/usbhdfsd.irx
-	$(BIN2S) $< $@ usbhdfsd_irx
-
+	$(BIN2S) $< $@ usbhdfsd_irx	
+	
 include $(PS2SDK)/samples/Makefile.pref
 include $(PS2SDK)/samples/Makefile.eeglobal
