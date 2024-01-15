@@ -29,14 +29,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <tamtypes.h>
 #include <sifrpc.h>
 #include <kernel.h>
-#ifdef NEWLIB
 #define NEWLIB_PORT_AWARE
+#include <fileXio_rpc.h>
 #include <loadfile.h>
 #include <fileio.h>
-#else
 #include <fcntl.h>
 #include <unistd.h>
-#endif
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -56,15 +54,19 @@ cvar_t  sys_linerefresh = {"sys_linerefresh","0"};// set for entity display
 
 qboolean			isDedicated;
 
-extern u32 usbd_irx;
-extern u32 size_usbd_irx;
+#define NEWLIB
 
-extern u32 usbhdfsd_irx;
-extern u32 size_usbhdfsd_irx;
+// external IRX modules
+#define EXTERN_IRX(_irx) \
+  extern u8 _irx[]; \
+  extern int size_##_irx
 
-extern u32 iomanx_irx;
-extern u32 size_iomanx_irx;
-
+EXTERN_IRX(usbd_irx);
+EXTERN_IRX(usbhdfsd_irx);
+EXTERN_IRX(iomanx_irx);
+EXTERN_IRX(fileXio_irx);
+EXTERN_IRX(sio2man_irx);
+EXTERN_IRX(padman_irx);
 
 void IOP_reset();
 void loadmodules();
@@ -149,9 +151,8 @@ void IOP_reset() // resets IOP and apply sbv patches.
 	
 	while(!SifIopReset("rom0:UDNL rom0:EELOADCNF",0));
 	while(!SifIopSync());
-#ifdef FILEXIO
 	fioExit();
-#endif
+	fileXioExit();
 	SifExitIopHeap();
 	SifLoadFileExit();
 	SifExitRpc();
@@ -162,9 +163,8 @@ void IOP_reset() // resets IOP and apply sbv patches.
   	//twice, some in-hdloader hack
   	while(!SifIopReset("rom0:UDNL rom0:EELOADCNF",0));
   	while(!SifIopSync());
-#ifdef FILEXIO
   	fioExit();
-#endif
+	fileXioExit();
   	SifExitIopHeap();
   	SifLoadFileExit();
   	SifExitRpc();
@@ -201,7 +201,7 @@ void stop_ps2_timer()
 void loadmodules()
 {
    int ret, id;
-     
+#if 0
     if ((id = SifExecModuleBuffer(&iomanx_irx, size_iomanx_irx, 0, NULL, &ret)) < 0) {
 		printf("Error loading iomanx\n");
 	}
@@ -268,6 +268,79 @@ void loadmodules()
 		printf("Failed to load module: PS2MOUSE");
 	//	SleepThread();
 	}
+#else
+    if ((id = SifExecModuleBuffer(&iomanx_irx, size_iomanx_irx, 0, NULL, &ret)) < 0) {
+		printf("Error loading iomanx\n");
+	}
+	
+	if ((id = SifExecModuleBuffer(&fileXio_irx, size_fileXio_irx, 0, NULL, &ret)) < 0) {
+		printf("Error loading fileXio");		
+	}
+	fileXioInit(); //After both modules loaded correctly then initialize fileXio.
+
+	if ((id = SifExecModuleBuffer(&sio2man_irx, size_sio2man_irx, 0, NULL, &ret)) < 0) {
+		printf("Error loading sio2man");
+	}
+
+	if ((id = SifExecModuleBuffer(&padman_irx, size_padman_irx, 0, NULL, &ret)) < 0) {
+		printf("Error loading padman");
+	}
+
+   /*ret = SifLoadModule("rom0:MCMAN", 0, NULL);
+   if(ret < 0){
+          printf("Error loading rom0:MCMAN\n");
+              }
+   ret = SifLoadModule("rom0:MCSERV", 0, NULL);
+   if(ret < 0){
+          printf("Error loading rom0:MCSERV\n");
+          }*/
+  //#ifdef _IOPRESET
+
+ // #endif      
+      
+
+  //ret = SifLoadModule("rom0:IOMAN", 0, NULL);
+  // if(ret < 0){
+     //     printf("Error loading rom0:IOMAN\n");
+      //        }
+      
+    if ((id = SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, &ret)) < 0) {
+		printf("Error loading usbd\n");
+	}
+    if ((id = SifExecModuleBuffer(&usbhdfsd_irx, size_usbhdfsd_irx, 0, NULL, &ret)) < 0) {
+		printf("Error loading usbhdfsd\n");
+	}
+	 
+    /*if ((id = SifExecModuleBuffer(&ps2kbd_irx, size_ps2kbd_irx, 0, NULL, &ret)) < 0) {
+		scr_printf("Error loading ps2kbd\n");
+	}
+	 if ((id = SifExecModuleBuffer(&ps2mouse_irx, size_ps2mouse_irx, 0, NULL, &ret)) < 0) {
+		scr_printf("Error loading ps2mouse\n");
+	}
+	if ((id = SifExecModuleBuffer(&ps2snd_irx, size_ps2snd_irx, 0, NULL, &ret)) < 0) {
+		scr_printf("Error loading ps2snd\n");
+	}*/
+	
+	/*
+	ret = SifLoadModule("mass:irx/ioptrap.irx", 0, NULL);
+	if (ret < 0) {
+		printf("Failed to load module: ioptrap.irx");
+		//SleepThread();
+	}*/
+#if 0 //no keyboard at the moment.
+	ret = SifLoadModule("mass:irx/ps2kbd.irx", 0, NULL);
+	if (ret < 0) {
+		printf("Failed to load module: PS2KBD");
+		//SleepThread();
+	}	
+
+	ret = SifLoadModule("mass:irx/ps2mouse.irx", 0, NULL);
+	if (ret < 0) {
+		printf("Failed to load module: PS2MOUSE");
+	//	SleepThread();
+	}
+#endif
+#endif
 }
 
 /*
@@ -316,13 +389,10 @@ int filelength (int f)
 {
 	int pos;
 	int end;
-#ifdef FILEXIO
-	end = fioLseek(f,0,SEEK_END);
-	pos = fioLseek(f,0,SEEK_SET);
-#else
+
 	end = lseek(f,0,SEEK_END);
 	pos = lseek(f,0,SEEK_SET);
-#endif
+
 	return end;
 }
 
@@ -332,11 +402,9 @@ int Sys_FileOpenRead (char *path, int *hndl)
 	int i;
 	
 	i = findhandle ();
-#ifdef NEWLIB
-	f = fioOpen(path,O_RDONLY);
-#else
+
 	f = open(path,O_RDONLY, 0777);
-#endif
+
 	if (!f)
 	{
 		*hndl = -1;
@@ -357,11 +425,7 @@ int Sys_FileOpenWrite (char *path)
 	int             i;
 	
 	i = findhandle ();
-#ifdef NEWLIB
-	f = fioOpen(path,O_WRONLY | O_CREAT);
-#else
 	f = open(path,O_WRONLY | O_CREAT, 0777);
-#endif
 	//FIXME
 	//if(!f)
 	//{
@@ -374,39 +438,24 @@ int Sys_FileOpenWrite (char *path)
 
 void Sys_FileClose (int handle)
 {
-#ifdef NEWLIB
-	fioClose(sys_handles[handle]);
-#else
+
 	close(sys_handles[handle]);
-#endif
 	sys_handles[handle] = -1;
 }
 
 void Sys_FileSeek (int handle, int position)
 {
-#ifdef NEWLIB
-	fioLseek (sys_handles[handle], position, SEEK_SET);
-#else
 	lseek (sys_handles[handle], position, SEEK_SET);
-#endif
 }
 
 int Sys_FileRead (int handle, void *dest, int count)
 {
-#ifdef NEWLIB
-	return fioRead(sys_handles[handle], dest, count);
-#else
 	return read(sys_handles[handle], dest, count);	
-#endif
 }
 
 int Sys_FileWrite (int handle, void *data, int count)
 {
-#ifdef NEWLIB
-	return fioWrite(sys_handles[handle], data, count);
-#else
 	return write(sys_handles[handle], data, count);
-#endif
 }
 
 int     Sys_FileTime (char *path)
@@ -492,6 +541,7 @@ char *Sys_ConsoleInput (void)
 
 void Sys_Sleep (void)
 {
+	
 }
 
 void Sys_SendKeyEvents (void)
@@ -519,7 +569,7 @@ int main (int argc, char **argv)
 	//signal(SIGFPE, SIG_IGN);
 	//SifInitRpc(0);
 	loadmodules();
-    #ifdef _SOUND
+    #ifdef _SOUND 
 	 if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0)
 	{
     Sys_Error("VID: Couldn't load SDL: %s", SDL_GetError());

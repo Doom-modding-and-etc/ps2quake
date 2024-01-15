@@ -76,11 +76,14 @@ EE_OBJS =\
     usbd_irx.o \
 	usbhdfsd_irx.o \
 	iomanx_irx.o \
+	fileXio_irx.o \
+	sio2man_irx.o \
+	padman_irx.o \
 	pad.o 
 	
 EE_BIN = bin/quake.elf
 
-EE_LIBS =   -lmouse -lkbd -lm -lc -lpad -lkernel
+EE_LIBS =   -lmouse -lkbd -lm -lc -lpad -lkernel -lfileXio
 EE_INCS :=  -I$(PS2SDK)/sbv/include -I$(PS2SDK)/ports/include/SDL -I$(PS2SDK)/ee/include -I$(PS2DEV)/ee/ee/include
 EE_CFLAGS = -g -Dstricmp=strcasecmp -funroll-loops -fomit-frame-pointer -fexpensive-optimizations
 EE_LDFLAGS := -L$(PS2SDK)/sbv/lib -L$(PS2SDK)/ports/lib
@@ -124,6 +127,15 @@ run:
 
 iomanx_irx.s: $(PS2SDK)/iop/irx/iomanX.irx
 	$(BIN2S) $< $@ iomanx_irx
+
+fileXio_irx.s: $(PS2SDK)/iop/irx/fileXio.irx
+	$(BIN2S) $< $@ fileXio_irx	
+
+sio2man_irx.s: $(PS2SDK)/iop/irx/sio2man.irx
+	$(BIN2S) $< $@ sio2man_irx	
+
+padman_irx.s: $(PS2SDK)/iop/irx/padman.irx
+	$(BIN2S) $< $@ padman_irx	
 
 usbd_irx.s: $(PS2SDK)/iop/irx/usbd.irx
 	$(BIN2S) $< $@ usbd_irx
